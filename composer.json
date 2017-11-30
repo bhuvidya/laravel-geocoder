@@ -1,0 +1,42 @@
+{
+    "name": "bhuvidya/laravel-geocoder",
+    "description": "A Laravel 5 package to make geocoding a breeze.",
+    "authors": [
+        {
+            "name": "bhu Boue vidya",
+            "email": "bhuvidya@gmail.com",
+            "role": "developer"
+        }
+    ],
+    "keywords": [
+        "laravel",
+        "google",
+        "googlemaps",
+        "geocode"
+    ],
+    "homepage": "https://github.com/bhuvidya/laravel-geocoder",
+    "license": "MIT",
+    "require": {
+        "guzzlehttp/guzzle": "~6.0",
+        "illuminate/support": "~5.5.0",
+        "php": ">=7.0.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Bhuvidya\\Geocoder\\": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "support": {
+        "source": "https://github.com/bhuvidya/laravel-geocoder",
+        "issues": "https://github.com/bhuvidya/laravel-geocoder/issues"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Bhuvidya\\Geocoder\\GeocoderServiceProvider"
+            ]
+        }
+    }
+}
