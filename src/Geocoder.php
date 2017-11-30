@@ -10,17 +10,18 @@ use Log;
 
 class Geocoder
 {
-    public static $lastStatus;
+    public static $lastResponse;
 
     protected static $httpClient;
 
 
     /**
-     * geocode remote user's ip address using http://freegeoip.net
+     * geocode ip address using http://freegeoip.net
      *
+     * @param string $ip - null => use REMOTE_ADDR
      * @return object | false
      */
-    public static function geocodeRemoteIP()
+    public static function geocodeRemoteIP($ip = null)
     {
         /*******
         // this geoip service returns data like so
@@ -40,7 +41,7 @@ class Geocoder
         ********/
 
         static::$lastResponse = $response = $this->getHttpClient()->get(
-            "http://freegeoip.net/json/{$_SERVER['REMOTE_ADDR']}",
+            'http://freegeoip.net/json/' . ($ip ?: $_SERVER['REMOTE_ADDR']),
             [
                 'headers' => [ 'Accept' => 'application/json' ],
             ]
@@ -54,14 +55,15 @@ class Geocoder
     }
 
     /**
-     * get the country code or name related to the current request's IP address
+     * get the country code or name related to the given IP address
      *
+     * @param string $ip - null => use REMOTE_ADDR
      * @param bool $code - true => return country code, o/w name
      * @return string | false
      */
-    public static function remoteIPCountry($code = true)
+    public static function remoteIPCountry($ip = null, $code = true)
     {
-        if (!$info = static::geocodeRemoteIP()) {
+        if (!$info = static::geocodeRemoteIP($ip)) {
             return false;
         }
 
@@ -71,11 +73,12 @@ class Geocoder
     /**
      * get the lat/lng of the remote IP address
      *
+     * @param string $ip - null => use REMOTE_ADDR
      * @return array | false
      */
-    public static function remoteIPLatLng()
+    public static function remoteIPLatLng($ip = null)
     {
-        if (!$info = static::geocodeRemoteIP()) {
+        if (!$info = static::geocodeRemoteIP($ip)) {
             return false;
         }
 
