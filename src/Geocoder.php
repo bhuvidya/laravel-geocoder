@@ -5,6 +5,8 @@
 namespace Bhuvidya\Geocoder;
 
 use GuzzleHttp\Client as GuzzleClient;
+use Carbon\Carbon;
+use Cache;
 use stdClass;
 use Log;
 
@@ -41,8 +43,18 @@ class Geocoder
         }
         ********/
 
+        $cache = config('geocoder.cache_results');
+        $cache_key = sprintf('geocode-remote-ip-%s', $ip);
+        $ip = $ip ?: $_SERVER['REMOTE_ADDR'];
+
+        if ($cache) {
+            if ($value = Cache::get($cache_key)) {
+                return $value;
+            }
+        }
+
         static::$lastResponse = $response = static::getHttpClient()->get(
-            'http://freegeoip.net/json/' . ($ip ?: $_SERVER['REMOTE_ADDR']),
+            'http://freegeoip.net/json/' . $ip,
             [
                 'headers' => [ 'Accept' => 'application/json' ],
             ]
@@ -52,7 +64,13 @@ class Geocoder
             return false;
         }
 
-        return @json_decode($response->getBody());
+        $ret = @json_decode($response->getBody());
+
+        if ($cache) {
+            Cache::put($cache_key, $ret, Carbon::now()->addMinutes(config('geocoder.cache_for_mins')));
+        }
+
+        return $ret;
     }
 
     /**
@@ -94,8 +112,20 @@ class Geocoder
      * @param bool $orig - if true then stash the original returned data
      * @return object | false
      */
-    public static function geocode($addr, $orig = false)
+    public static function geocode($addr, $orig = true)
     {
+        $cache = config('geocoder.cache_results');
+        $cache_key = sprintf('geocode-addr-%s', $addr);
+
+        if ($cache) {
+            if ($value = Cache::get($cache_key)) {
+                if (!$orig) {
+                    unset($value->_orig);
+                }
+                return $value;
+            }
+        }
+
         $url = sprintf(
             'https://maps.googleapis.com/maps/api/geocode/json?address=%s&sensor=false&key=%s',
             urlencode($addr),
@@ -131,7 +161,7 @@ class Geocoder
                     'lng' => $geo->location->lng
                 );
 
-                if ($geo->bounds) {
+                if (isset($geo->bounds)) {
                     $info->box = (object) array(
                         'north' => $geo->bounds->northeast->lat,
                         'south' => $geo->bounds->southwest->lat,
@@ -154,11 +184,18 @@ class Geocoder
                     }
                 }
 
-                if ($orig) {
-                    $info->_orig = $json;
+                $info->_orig = $json;
+
+                if ($cache) {
+                    Cache::put($cache_key, $info, Carbon::now()->addMinutes(config('geocoder.cache_for_mins')));
+                }
+
+                if (!$orig) {
+                    unset($info->_orig);
                 }
 
                 return $info;
+
             } elseif ($status == 'OVER_QUERY_LIMIT') {
                 // delay then try again
                 usleep(config('geocoder.rate_limit_delay_secs') * 1000000);
@@ -178,8 +215,20 @@ class Geocoder
      * @param bool $orig - if true then original response is stahsed in return value
      * @return object | false
      */
-    public static function reverseGeocode($lat, $lng, $orig = false)
+    public static function reverseGeocode($lat, $lng, $orig = true)
     {
+        $cache = config('geocoder.cache_results');
+        $cache_key = sprintf('geocode-latlng-%f-%f', $lat, $lng);
+
+        if ($cache) {
+            if ($value = Cache::get($cache_key)) {
+                if (!$orig) {
+                    unset($value->_orig);
+                }
+                return $value;
+            }
+        }
+
         $url = sprintf(
             'https://maps.googleapis.com/maps/api/geocode/json?latlng=%f,%f&sensor=false&key=%s',
             $lat,
@@ -215,11 +264,18 @@ class Geocoder
                     }
                 }
 
-                if ($orig) {
-                    $info->_orig = $json;
+                $info->_orig = $json;
+
+                if ($cache) {
+                    Cache::put($cache_key, $info, Carbon::now()->addMinutes(config('geocoder.cache_for_mins')));
+                }
+
+                if (!$orig) {
+                    unset($info->_orig);
                 }
 
                 return $info;
+
             } elseif ($status == 620) {
                 // delay then try again
                 usleep(config('geocoder.rate_limit_delay_secs') * 1000000);
