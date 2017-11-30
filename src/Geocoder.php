@@ -170,6 +170,66 @@ class Geocoder
         }
     }
 
+    /**
+     * reverse-geocode an address
+     *
+     * @param float $lat
+     * @param float $lng
+     * @param bool $orig - if true then original response is stahsed in return value
+     * @return object | false
+     */
+    public static function reverseGeocode($lat, $lng, $orig = false)
+    {
+        $url = sprintf(
+            'https://maps.googleapis.com/maps/api/geocode/json?latlng=%f,%f&sensor=false&key=%s',
+            $lat,
+            $lng,
+            config('geocoder.google_maps_api_key')
+        );
+
+        $headers = [ 'headers' => [ 'Accept' => 'application/json' ] ];
+
+        while (true) {
+            static::$lastResponse = $response = static::getHttpClient()->get($url, $headers);
+
+            if (!$response) {
+                return false;
+            }
+
+            if (!$json = json_decode(iconv('ISO-8859-1', 'UTF-8', $response->getBody()))) {
+                return false;
+            }
+
+            $status = static::$lastStatus = $json->status;
+
+            if ($json->status == 'OK') {
+                $info = new stdClass();
+
+                $info->lat = $lat;
+                $info->lng = $lng;
+                $info->addresses = array();
+
+                if ($json->results) {
+                    foreach ($json->results as $result) {
+                        $info->addresses[] = $result->formatted_address;
+                    }
+                }
+
+                if ($orig) {
+                    $info->_orig = $json;
+                }
+
+                return $info;
+            } elseif ($status == 620) {
+                // delay then try again
+                usleep(config('geocoder.rate_limit_delay_secs') * 1000000);
+            } else {
+                // failure to geocode
+                return false;
+            }
+        }
+    }
+
 
     /*
     |--------------------------------------------------------------------------
