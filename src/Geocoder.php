@@ -40,7 +40,7 @@ class Geocoder
         }
         ********/
 
-        static::$lastResponse = $response = $this->getHttpClient()->get(
+        static::$lastResponse = $response = static::getHttpClient()->get(
             'http://freegeoip.net/json/' . ($ip ?: $_SERVER['REMOTE_ADDR']),
             [
                 'headers' => [ 'Accept' => 'application/json' ],
