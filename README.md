@@ -29,7 +29,7 @@ Otherwise, edit `app/config/app.php` and add the service provider:
 ## Configuration
 
 You can elect to manage your own configuration. This is an optional step, but only if you define
-your Google Maps API Key in your `.env' file via `GOOGLE_MAPS_API_KEY`.
+your Google Maps API Key in your `.env` file via `GOOGLE_MAPS_API_KEY`.
 
 Otherwise run the following command
 
