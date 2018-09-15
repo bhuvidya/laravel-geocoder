@@ -1,7 +1,5 @@
 <?php
 
-/* vim: set ai expandtab tabstop=4 shiftwidth=4 softtabstop=4: */
-
 namespace Bhuvidya\Geocoder;
 
 use GuzzleHttp\Client as GuzzleClient;
