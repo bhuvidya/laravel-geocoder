@@ -1,8 +1,9 @@
 <?php
 
-namespace Bhuvidya\Geocoder;
+namespace BhuVidya\Geocoder;
 
 use Illuminate\Support\ServiceProvider;
+
 
 class GeocoderServiceProvider extends ServiceProvider
 {

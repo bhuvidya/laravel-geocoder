@@ -1,6 +1,6 @@
 <?php
 
-namespace Bhuvidya\Geocoder;
+namespace BhuVidya\Geocoder;
 
 use GuzzleHttp\Client as GuzzleClient;
 use Carbon\Carbon;
@@ -17,94 +17,7 @@ class Geocoder
 
 
     /**
-     * geocode ip address using http://freegeoip.net
-     *
-     * @param string $ip - null => use REMOTE_ADDR
-     * @return object | false
-     */
-    public static function geocodeRemoteIP($ip = null)
-    {
-        /*******
-        // this geoip service returns data like so
-        {
-            ip: "27.32.138.126",
-            country_code: "AU",
-            country_name: "Australia",
-            region_code: "VIC",
-            region_name: "Victoria",
-            city: "North Fitzroy",
-            zip_code: "3068",
-            time_zone: "Australia/Melbourne",
-            latitude: -37.7833,
-            longitude: 144.9667,
-            metro_code: 0
-        }
-        ********/
-
-        $cache = config('geocoder.cache_results');
-        $cache_key = sprintf('geocode-remote-ip-%s', $ip);
-        $ip = $ip ?: $_SERVER['REMOTE_ADDR'];
-
-        if ($cache) {
-            if ($value = Cache::get($cache_key)) {
-                return $value;
-            }
-        }
-
-        static::$lastResponse = $response = static::getHttpClient()->get(
-            'http://freegeoip.net/json/' . $ip,
-            [
-                'headers' => [ 'Accept' => 'application/json' ],
-            ]
-        );
-
-        if (!$response) {
-            return false;
-        }
-
-        $ret = @json_decode($response->getBody());
-
-        if ($cache) {
-            Cache::put($cache_key, $ret, Carbon::now()->addMinutes(config('geocoder.cache_for_mins')));
-        }
-
-        return $ret;
-    }
-
-    /**
-     * get the country code or name related to the given IP address
-     *
-     * @param string $ip - null => use REMOTE_ADDR
-     * @param bool $code - true => return country code, o/w name
-     * @return string | false
-     */
-    public static function remoteIPCountry($ip = null, $code = true)
-    {
-        if (!$info = static::geocodeRemoteIP($ip)) {
-            return false;
-        }
-
-        return $code ? $info->country_code : $info->country_name;
-    }
-
-    /**
-     * get the lat/lng of the remote IP address
-     *
-     * @param string $ip - null => use REMOTE_ADDR
-     * @return array | false
-     */
-    public static function remoteIPLatLng($ip = null)
-    {
-        if (!$info = static::geocodeRemoteIP($ip)) {
-            return false;
-        }
-
-        return [ 'lat' => $info->latitude, 'lng' => $info->longitude ];
-    }
-
-
-    /**
-     * geocode an address using the Google Maps API
+     * Geocode an address using the Google Maps API.
      *
      * @param string $addr - the address to geocode
      * @param bool $orig - if true then stash the original returned data
@@ -206,7 +119,7 @@ class Geocoder
     }
 
     /**
-     * reverse-geocode an address
+     * Reverse-geocode an address.
      *
      * @param float $lat
      * @param float $lng
@@ -282,6 +195,92 @@ class Geocoder
                 return false;
             }
         }
+    }
+
+    /**
+     * Geocode an IP address using http://freegeoip.net.
+     *
+     * @param string $ip - null => use REMOTE_ADDR
+     * @return object | false
+     */
+    public static function geocodeRemoteIP($ip = null)
+    {
+        /*******************************************
+        // this geoip service returns data like so
+        {
+            ip: "27.32.138.126",
+            country_code: "AU",
+            country_name: "Australia",
+            region_code: "VIC",
+            region_name: "Victoria",
+            city: "North Fitzroy",
+            zip_code: "3068",
+            time_zone: "Australia/Melbourne",
+            latitude: -37.7833,
+            longitude: 144.9667,
+            metro_code: 0
+        }
+        ********************************************/
+
+        $cache = config('geocoder.cache_results');
+        $cache_key = sprintf('geocode-remote-ip-%s', $ip);
+        $ip = $ip ?: $_SERVER['REMOTE_ADDR'];
+
+        if ($cache) {
+            if ($value = Cache::get($cache_key)) {
+                return $value;
+            }
+        }
+
+        static::$lastResponse = $response = static::getHttpClient()->get(
+            'http://freegeoip.net/json/' . $ip,
+            [
+                'headers' => [ 'Accept' => 'application/json' ],
+            ]
+        );
+
+        if (!$response) {
+            return false;
+        }
+
+        $ret = @json_decode($response->getBody());
+
+        if ($cache) {
+            Cache::put($cache_key, $ret, Carbon::now()->addMinutes(config('geocoder.cache_for_mins')));
+        }
+
+        return $ret;
+    }
+
+    /**
+     * Get the country code or name related to the given IP address.
+     *
+     * @param string $ip - null => use REMOTE_ADDR
+     * @param bool $code - true => return country code, o/w name
+     * @return string | false
+     */
+    public static function remoteIPCountry($ip = null, $code = true)
+    {
+        if (!$info = static::geocodeRemoteIP($ip)) {
+            return false;
+        }
+
+        return $code ? $info->country_code : $info->country_name;
+    }
+
+    /**
+     * get the lat/lng of the remote IP address
+     *
+     * @param string $ip - null => use REMOTE_ADDR
+     * @return array | false
+     */
+    public static function remoteIPLatLng($ip = null)
+    {
+        if (!$info = static::geocodeRemoteIP($ip)) {
+            return false;
+        }
+
+        return [ 'lat' => $info->latitude, 'lng' => $info->longitude ];
     }
 
 
