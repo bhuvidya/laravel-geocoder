@@ -8,6 +8,10 @@ use Cache;
 use stdClass;
 use Log;
 
+
+/**
+ * Provide support for easy geocoding, mainly via Google's geocoding API.
+ */
 class Geocoder
 {
     public static $lastResponse;
@@ -20,18 +24,29 @@ class Geocoder
      * Geocode an address using the Google Maps API.
      *
      * @param string $addr - the address to geocode
-     * @param bool $orig - if true then stash the original returned data
+     * @param array $opts
+     *                  bool ['orig'] - also stash the original returned data object
+     *                  bool ['refresh'] - don't use cached value
+     *                  string ['region'] - for region biased results - see 
+     *                                https://developers.google.com/maps/documentation/geocoding/intro#RegionCodes
      * @return object | false
      */
-    public static function geocode($addr, $orig = true)
+    public static function geocode($addr, array $opts = [])
     {
-        $cache = config('geocoder.cache_results');
-        $cache_key = sprintf('geocode-addr-%s', $addr);
+        $opts = array_replace([
+            'orig' => true,
+            'refresh' => false,
+            'region' => null,
+        ], $opts);
 
-        if ($cache) {
+        $cache = config('geocoder.cache_results');
+        $cache_key = sprintf('geocode-addr-%s-%s', $addr, json_encode($opts));
+
+        if (!$opts['refresh'] && $cache) {
             if ($value = Cache::get($cache_key)) {
-                if (!$orig) {
+                if (!$opts['orig']) {
                     unset($value->_orig);
+                    unset($value->_orig_url);
                 }
                 return $value;
             }
@@ -42,6 +57,10 @@ class Geocoder
             urlencode($addr),
             config('geocoder.google_maps_api_key')
         );
+
+        if ($opts['region']) {
+            $url .= "&region={$opts['region']}";
+        }
 
         $headers = [ 'headers' => [ 'Accept' => 'application/json' ] ];
 
@@ -95,13 +114,16 @@ class Geocoder
                     }
                 }
 
+
+                // we always have the original value in our cached data
                 $info->_orig = $json;
+                $info->_orig_url = $url;
 
                 if ($cache) {
                     Cache::put($cache_key, $info, Carbon::now()->addMinutes(config('geocoder.cache_for_mins')));
                 }
 
-                if (!$orig) {
+                if (!$opts['orig']) {
                     unset($info->_orig);
                 }
 
@@ -123,18 +145,26 @@ class Geocoder
      *
      * @param float $lat
      * @param float $lng
-     * @param bool $orig - if true then original response is stahsed in return value
+     * @param array $opts
+     *                  bool ['orig'] - also stash the original returned data object
+     *                  bool ['refresh'] - don't use cached value
      * @return object | false
      */
-    public static function reverseGeocode($lat, $lng, $orig = true)
+    public static function reverseGeocode($lat, $lng, array $opts = [])
     {
-        $cache = config('geocoder.cache_results');
-        $cache_key = sprintf('geocode-latlng-%f-%f', $lat, $lng);
+        $opts = array_replace([
+            'orig' => true,
+            'refresh' => false,
+        ], $opts);
 
-        if ($cache) {
+        $cache = config('geocoder.cache_results');
+        $cache_key = sprintf('geocode-latlng-%f-%f-%s', $lat, $lng, json_encode($opts));
+
+        if (!$opts['refresh'] && $cache) {
             if ($value = Cache::get($cache_key)) {
-                if (!$orig) {
+                if (!$opts['orig']) {
                     unset($value->_orig);
+                    unset($value->_orig_url);
                 }
                 return $value;
             }
@@ -175,14 +205,17 @@ class Geocoder
                     }
                 }
 
+                // we always stash original return values
                 $info->_orig = $json;
+                $info->_orig_url = $url;
 
                 if ($cache) {
                     Cache::put($cache_key, $info, Carbon::now()->addMinutes(config('geocoder.cache_for_mins')));
                 }
 
-                if (!$orig) {
+                if (!$opts['orig']) {
                     unset($info->_orig);
+                    unset($info->_orig_url);
                 }
 
                 return $info;
@@ -198,27 +231,52 @@ class Geocoder
     }
 
     /**
-     * Geocode an IP address using http://freegeoip.net.
+     * Geocode an IP address using https://ipstack.com
      *
      * @param string $ip - null => use REMOTE_ADDR
+     * @param array $opts
+     *                  bool ['orig'] - also stash the original returned data object
+     *                  bool ['refresh'] - don't use cached value
      * @return object | false
      */
-    public static function geocodeRemoteIP($ip = null)
+    public static function geocodeRemoteIP($ip = null, array $opts = [])
     {
+        $opts = array_replace([
+            'orig' => true,
+            'refresh' => false,
+        ], $opts);
+
         /*******************************************
         // this geoip service returns data like so
         {
-            ip: "27.32.138.126",
+            ip: "175.34.200.120",
+            type: "ipv4",
+            continent_code: "OC",
+            continent_name: "Oceania",
             country_code: "AU",
             country_name: "Australia",
             region_code: "VIC",
             region_name: "Victoria",
-            city: "North Fitzroy",
-            zip_code: "3068",
-            time_zone: "Australia/Melbourne",
-            latitude: -37.7833,
-            longitude: 144.9667,
-            metro_code: 0
+            city: "Narre Warren North",
+            zip: "3804",
+            latitude: -37.98112869262695,
+            longitude: 145.31527709960938,
+            location: {
+                geoname_id: null,
+                capital: "Canberra",
+                languages: [
+                    {
+                        code: "en",
+                        name: "English",
+                        native: "English"
+                    }
+                ],
+                country_flag: "http://assets.ipstack.com/flags/au.svg",
+                country_flag_emoji: "🇦🇺",
+                country_flag_emoji_unicode: "U+1F1E6 U+1F1FA",
+                calling_code: "61",
+                is_eu: false
+            }
         }
         ********************************************/
 
@@ -226,14 +284,24 @@ class Geocoder
         $cache_key = sprintf('geocode-remote-ip-%s', $ip);
         $ip = $ip ?: $_SERVER['REMOTE_ADDR'];
 
-        if ($cache) {
+        if (!$opts['refresh'] && $cache) {
             if ($value = Cache::get($cache_key)) {
+                if (!$opts['orig']) {
+                    unset($value['_orig_url']);
+                }
                 return $value;
             }
         }
 
+        $url = sprintf(
+            '%s://api.ipstack.com/%s?access_key=%s',
+            config('ipstack_https') ? 'https' : 'http',
+            $ip,
+            config('geocoder.ipstack_api_key')
+        );
+
         static::$lastResponse = $response = static::getHttpClient()->get(
-            'http://freegeoip.net/json/' . $ip,
+            $url,
             [
                 'headers' => [ 'Accept' => 'application/json' ],
             ]
@@ -243,10 +311,18 @@ class Geocoder
             return false;
         }
 
-        $ret = @json_decode($response->getBody());
+        $ret = @json_decode($response->getBody(), true);
+
+        if ($ret) {
+            $ret['_orig_url'] = $url;
+        }
 
         if ($cache) {
             Cache::put($cache_key, $ret, Carbon::now()->addMinutes(config('geocoder.cache_for_mins')));
+        }
+
+        if (!$opts['orig']) {
+            unset($ret['_orig_url']);
         }
 
         return $ret;
@@ -265,7 +341,7 @@ class Geocoder
             return false;
         }
 
-        return $code ? $info->country_code : $info->country_name;
+        return $code ? $info['country_code'] : $info['country_name'];
     }
 
     /**
@@ -280,13 +356,13 @@ class Geocoder
             return false;
         }
 
-        return [ 'lat' => $info->latitude, 'lng' => $info->longitude ];
+        return [ 'lat' => $info['latitude'], 'lng' => $info['longitude'] ];
     }
 
 
     /*
     |--------------------------------------------------------------------------
-    | helpers
+    | Local helpers.
     |--------------------------------------------------------------------------
     */
 
