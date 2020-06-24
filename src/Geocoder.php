@@ -359,6 +359,71 @@ class Geocoder
         return [ 'lat' => $info['latitude'], 'lng' => $info['longitude'] ];
     }
 
+    /**
+     * Calculates the distance between two locations, by geocoding
+     * them, and then returns either an array of values
+     * of the most common distance units, or a given unit.
+     *
+     * @param string $loc1 - first location
+     * @param string $loc2 - second location
+     * @param array $opts
+     *                  string ['units'] - null means return all
+     * @return array|float|false - array of values for many distance units, or a single value
+     */
+    public static function getDistanceBetweenLocations($loc1, $loc2, array $opts = [])
+    {
+        $opts = array_replace([
+            'orig' => true,
+            'refresh' => false,
+            'region' => null,
+            'units' => null,
+        ], $opts);
+
+        $loc1_geocode = static::geocode($loc1, $opts);
+        $loc2_geocode = static::geocode($loc2, $opts);
+
+        if (!$loc1_geocode || !$loc2_geocode) {
+            return false;
+        }
+
+        return static::getDistanceBetweenPoints(
+            $loc1_geocode->center->lat,
+            $loc1_geocode->center->lng,
+            $loc2_geocode->center->lat,
+            $loc2_geocode->center->lng,
+            $opts['units']
+        );
+    }
+
+    /**
+     * Calculates the distance between two points, given their
+     * latitude and longitude, and returns an array of values
+     * of the most common distance units
+     *
+     * @param float $lat1 - latitude of the first point
+     * @param float $lng1 - longitude of the first point
+     * @param float $lat2 - latitude of the second point
+     * @param float $lng2 - longitude of the second point
+     * @param string $units - empty() means return all
+     * @return mixed - array of values in many distance units or a single value
+     */
+    public static function getDistanceBetweenPoints($lat1, $lng1, $lat2, $lng2, $units = null)
+    {
+        $theta = $lng1 - $lng2;
+        $miles = (sin(deg2rad($lat1)) * sin(deg2rad($lat2))) + (cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * cos(deg2rad($theta)));
+        $miles = acos($miles);
+        $miles = rad2deg($miles);
+        $miles = $miles * 60 * 1.1515;
+        $feet = $miles * 5280;
+        $yards = $feet / 3;
+        $km = $miles * 1.609344;
+        $m = $km * 1000;
+
+        $vals = compact('miles', 'feet', 'yards', 'km', 'm');
+
+        return empty($units) || empty($vals[$units]) ? $vals : $vals[$units];
+    }
+
 
     /*
     |--------------------------------------------------------------------------
