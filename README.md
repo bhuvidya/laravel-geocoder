@@ -5,6 +5,8 @@
 [![Latest Stable Version](https://poser.pugx.org/bhuvidya/laravel-geocoder/v/stable?format=flat-square)](https://packagist.org/packages/bhuvidya/laravel-geocoder)
 [![Latest Unstable Version](https://poser.pugx.org/bhuvidya/laravel-geocoder/v/unstable?format=flat-square)](https://packagist.org/packages/bhuvidya/laravel-geocoder)
 
+**Note I have now switched the semver versioning for my Laravel packages to "match" the latest supported Laravel version.**
+
 
 A Laravel 5 package to make geocoding a breeze.
 
